@@ -1,0 +1,81 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Church {
+  id             String   @id @default(uuid())
+  name           String
+  logoUrl        String?
+  brandingColors String?
+  createdAt      DateTime @default(now())
+
+  users     User[]
+  services  Service[]
+  recordings Recording[]
+}
+
+model User {
+  id           String   @id @default(uuid())
+  churchId     String
+  church       Church   @relation(fields: [churchId], references: [id])
+  name         String
+  email        String   @unique
+  passwordHash String
+  role         Role     @default(MEDIA_TEAM)
+  status       Status   @default(ACTIVE)
+  createdAt    DateTime @default(now())
+
+  recordings Recording[] @relation("RecordedBy")
+}
+
+enum Role {
+  ADMIN
+  MEDIA_TEAM
+}
+
+enum Status {
+  ACTIVE
+  INACTIVE
+}
+
+model Service {
+  id        String   @id @default(uuid())
+  churchId  String
+  church    Church   @relation(fields: [churchId], references: [id])
+  title     String
+  type      String
+  createdAt DateTime @default(now())
+
+  recordings Recording[]
+}
+
+model Recording {
+  id            String          @id @default(uuid())
+  churchId      String
+  church        Church          @relation(fields: [churchId], references: [id])
+  serviceId     String
+  service       Service         @relation(fields: [serviceId], references: [id])
+  recordedById  String
+  recordedBy    User            @relation("RecordedBy", fields: [recordedById], references: [id])
+  title         String
+  date          DateTime
+  duration      Int?
+  status        RecordingStatus @default(RECORDING)
+  videoUrl      String?
+  thumbnailUrl  String?
+  editingStatus String?
+  egressId      String?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+}
+
+enum RecordingStatus {
+  RECORDING
+  EDITING
+  COMPLETED
+}

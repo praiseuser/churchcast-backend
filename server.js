@@ -6,6 +6,7 @@ import recordingsRoutes from "./routes/recordings.js";
 import egressRoutes from "./routes/egress.js";
 import exportRoutes from "./routes/export.js";
 import churchRoutes from "./routes/church.js";
+import tokenRoutes from "./routes/token.js";
 
 
 const app = express();
@@ -24,6 +25,7 @@ app.use("/api/recordings", recordingsRoutes);
 app.use("/api/egress", egressRoutes);
 app.use("/api/export", exportRoutes);
 app.use("/api/church", churchRoutes);
+app.use("/api/token", tokenRoutes);
 
 app.get("/", (req, res) => {
   res.json({ status: "ChurchCast Studio API running" });

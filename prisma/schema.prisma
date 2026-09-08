@@ -12,6 +12,7 @@ model Church {
   name           String
   logoUrl        String?
   brandingColors String?
+  facebookStreamUrl String?
   createdAt      DateTime @default(now())
 
   users     User[]

@@ -21,11 +21,11 @@ router.put("/", authenticate, async (req, res) => {
   if (req.user.role !== "ADMIN") {
     return res.status(403).json({ message: "Only Admins can update church settings" });
   }
-  const { name, brandingColors } = req.body;
+  const { name, brandingColors, facebookStreamUrl } = req.body;
   try {
     const church = await prisma.church.update({
       where: { id: req.user.churchId },
-      data: { name, brandingColors },
+      data: { name, brandingColors, facebookStreamUrl },
     });
     res.json(church);
   } catch (err) {

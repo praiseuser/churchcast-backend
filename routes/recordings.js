@@ -1,8 +1,21 @@
 import express from "express";
 import prisma from "../prismaClient.js";
 import { authenticate } from "../middleware/auth.js";
+import multer from "multer";
+import { v2 as cloudinary } from "cloudinary";
 
 const router = express.Router();
+
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 * 1024 },
+});
 
 router.post("/start", authenticate, async (req, res) => {
   const { title, type, date } = req.body;
@@ -70,7 +83,8 @@ router.get("/:id", authenticate, async (req, res) => {
       where: { id: req.params.id },
       include: { service: true, recordedBy: true },
     });
-    if (!recording) return res.status(404).json({ message: "Recording not found" });
+    if (!recording)
+      return res.status(404).json({ message: "Recording not found" });
 
     res.json({
       id: recording.id,
@@ -86,5 +100,41 @@ router.get("/:id", authenticate, async (req, res) => {
     res.status(500).json({ message: "Could not load recording" });
   }
 });
+
+router.post(
+  "/:id/upload",
+  authenticate,
+  upload.single("file"),
+  async (req, res) => {
+    try {
+      if (!req.file)
+        return res.status(400).json({ message: "No file uploaded" });
+
+      const uploadResult = await new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            resource_type: "video",
+            public_id: req.params.id,
+            folder: "churchcast-recordings",
+          },
+          (error, result) => (error ? reject(error) : resolve(result)),
+        );
+        stream.end(req.file.buffer);
+      });
+
+      const recording = await prisma.recording.update({
+        where: { id: req.params.id },
+        data: { videoUrl: uploadResult.secure_url, status: "EDITING" },
+      });
+
+      res.json({ videoUrl: recording.videoUrl });
+    } catch (err) {
+      console.error("Upload error:", err);
+      res
+        .status(500)
+        .json({ message: "Could not upload recording", detail: err.message });
+    }
+  },
+);
 
 export default router;

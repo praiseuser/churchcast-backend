@@ -17,10 +17,9 @@ cloudinary.config({
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 50 * 1024 * 1024 }, // each small chunk, not the whole file
+  limits: { fileSize: 50 * 1024 * 1024 },
 });
 
-// Tracks the temp file path being built for each in-progress recording
 const tempFiles = new Map();
 
 router.post("/start", authenticate, async (req, res) => {
@@ -103,8 +102,6 @@ router.get("/:id", authenticate, async (req, res) => {
   }
 });
 
-// Called repeatedly, every ~10 seconds, while recording is happening.
-// Each small piece is appended to a growing file on the server immediately.
 router.post(
   "/:id/chunk",
   authenticate,
@@ -130,9 +127,6 @@ router.post(
   },
 );
 
-// Called once, right after Stop. The file is already sitting on the
-// server by this point — this just pushes it from server to Cloudinary,
-// which is a much more stable connection than the phone's.
 router.post("/:id/finalize", authenticate, async (req, res) => {
   const { id } = req.params;
   try {
@@ -170,6 +164,26 @@ router.post("/:id/finalize", authenticate, async (req, res) => {
     res
       .status(500)
       .json({ message: "Could not finalize recording", detail: err.message });
+  }
+});
+
+router.get("/live", authenticate, async (req, res) => {
+  try {
+    const recordings = await prisma.recording.findMany({
+      where: { churchId: req.user.churchId, status: "RECORDING" },
+      include: { recordedBy: true },
+      orderBy: { createdAt: "desc" },
+    });
+    res.json(
+      recordings.map((r) => ({
+        id: r.id,
+        title: r.title,
+        recordedBy: r.recordedBy?.name || "Unknown",
+      }))
+    );
+  } catch (err) {
+    console.error("List live recordings error:", err);
+    res.status(500).json({ message: "Could not load live recordings" });
   }
 });
 
